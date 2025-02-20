@@ -111,6 +111,20 @@ impl InstalledPackages {
 
                 let idx = distributions.len();
 
+                // Ignore duplicate entries.
+                if by_name
+                    .get(dist_info.name())
+                    .into_iter()
+                    .flatten()
+                    .any(|dist_id| {
+                        distributions[*dist_id]
+                            .as_ref()
+                            .is_some_and(|existing| existing.path() == dist_info.path())
+                    })
+                {
+                    continue;
+                }
+
                 // Index the distribution by name.
                 by_name
                     .entry(dist_info.name().clone())
