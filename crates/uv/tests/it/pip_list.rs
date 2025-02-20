@@ -862,5 +862,29 @@ fn list_extended_sys_path() -> Result<()> {
     "###
     );
 
+    // Simulate broken site-packages.
+    uv_fs::copy_dir_all(
+        extra_path.path().join("sniffio-1.0.0.dist-info"),
+        context.site_packages().join("sniffio-1.0.0.dist-info"),
+    )?;
+
+    uv_snapshot!(context.pip_list().arg("--no-cache"), @r###"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Package    Version
+    ---------- -------
+    anyio      4.3.0
+    idna       3.6
+    markupsafe 2.1.3
+    sniffio    1.0.0
+
+    ----- stderr -----
+    warning: There are two competing distributions for sniffio:
+    * version 1.0.0 at `.venv/lib/python3.12/site-packages/sniffio-1.0.0.dist-info`
+    * version 1.3.1 at `.venv/lib/python3.12/site-packages/sniffio-1.3.1.dist-info`
+    "###
+    );
+
     Ok(())
 }

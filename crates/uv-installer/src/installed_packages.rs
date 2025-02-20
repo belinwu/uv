@@ -18,7 +18,7 @@ use uv_pep440::{Version, VersionSpecifiers};
 use uv_pypi_types::{Requirement, ResolverMarkerEnvironment, VerbatimParsedUrl};
 use uv_python::{Interpreter, PythonEnvironment};
 use uv_types::InstalledPackagesProvider;
-use uv_warnings::warn_user;
+use uv_warnings::{warn_user, warn_user_once};
 
 use crate::satisfies::RequirementSatisfaction;
 
@@ -112,16 +112,30 @@ impl InstalledPackages {
                 let idx = distributions.len();
 
                 // Ignore duplicate entries.
-                if by_name
+                if let Some(existing) = by_name
                     .get(dist_info.name())
                     .into_iter()
                     .flatten()
-                    .any(|dist_id| {
-                        distributions[*dist_id]
-                            .as_ref()
-                            .is_some_and(|existing| existing.path() == dist_info.path())
-                    })
+                    .find_map(|dist_id| distributions[*dist_id].as_ref())
                 {
+                    // It can be valid to shadow packages, but two different distributions for the
+                    // same package name in the same directory should never happen, see e.g.
+                    // https://github.com/astral-sh/uv/issues/11648. In this case, it is not clear
+                    // of which version the module that Python will pick up is.
+                    if *existing != dist_info
+                        && existing.path().parent() == dist_info.path().parent()
+                    {
+                        warn_user_once!(
+                            "There are two competing distributions for {}:\n\
+                             * version {} at `{}`\n\
+                             * version {} at `{}`",
+                            dist_info.name(),
+                            existing.version(),
+                            existing.path().user_display(),
+                            dist_info.version(),
+                            dist_info.path().user_display(),
+                        );
+                    }
                     continue;
                 }
 
