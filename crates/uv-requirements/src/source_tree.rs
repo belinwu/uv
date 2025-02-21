@@ -140,9 +140,6 @@ impl<'a, Context: BuildContext> SourceTreeResolver<'a, Context> {
             }
         }
         // Complain if dependency groups are named that don't appear.
-        // This is only a warning because *technically* we support passing in
-        // multiple pyproject.tomls, but at this level of abstraction we can't see them all,
-        // so hard erroring on "no pyproject.toml mentions this" is a bit difficult.
         for name in groups.explicit_names() {
             if !metadata.dependency_groups.contains_key(name) {
                 return Err(anyhow::anyhow!(
